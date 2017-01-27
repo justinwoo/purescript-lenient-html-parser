@@ -1,0 +1,26 @@
+{
+  "name": "purescript-lenient-html-parser",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/justinwoo/purescript-lenient-html-parser.git"
+  },
+  "dependencies": {
+    "purescript-prelude": "^2.2.0",
+    "purescript-console": "^2.0.0",
+    "purescript-string-parsers": "^2.0.0",
+    "purescript-generics-rep": "^4.1.0"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^2.0.0",
+    "purescript-aff": "^2.0.2",
+    "purescript-test-unit": "^10.1.0",
+    "purescript-node-fs-aff": "^3.0.0"
+  }
+}
