@@ -3,10 +3,9 @@ module Test.Main where
 import Prelude
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Aff.Console (logShow)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
-import Data.Either (Either(Right, Left))
+import Data.Either (Either(Right, Left), either)
 import Data.List (List(..), (:))
 import Data.Monoid (mempty)
 import LenientHtmlParser (parse, tnode, tag, attribute, TagName(TagName), Tag(TagOpen, TNode, TagClose, TagSingle), Name(Name), Value(Value), Attribute(Attribute), parseTags)
@@ -106,9 +105,4 @@ main = runTest do
       expectTags testMultiCommentHtml expectedMultiCommentTestTags
     test "test fixtures/crap.html" do
       a <- readTextFile UTF8 "fixtures/crap.html"
-      case parseTags a of
-        Right x -> do
-          -- logShow x
-          success
-        Left e ->
-          failure (show e)
+      either (failure <<< show) (const success) (parseTags a)

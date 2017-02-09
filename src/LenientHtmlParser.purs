@@ -3,10 +3,11 @@ module LenientHtmlParser where
 import Prelude
 import Data.Generic.Rep as Rep
 import Control.Alt ((<|>))
+import Data.Array (fromFoldable)
 import Data.Either (Either)
 import Data.Generic (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.List (List, toUnfoldable)
+import Data.List (List)
 import Data.Monoid (mempty)
 import Data.String (trim, fromCharArray)
 import Text.Parsing.StringParser (Parser, ParseError, runParser, fail)
@@ -50,88 +51,77 @@ derive instance genericRepTag :: Rep.Generic Tag _
 instance showTag :: Show Tag where show = genericShow
 
 flattenChars :: List Char -> String
-flattenChars = fromCharArray <<< toUnfoldable
+flattenChars = trim <<< fromCharArray <<< fromFoldable
 
 comment :: Parser Unit
-comment =
-  string "<!--" *> innerComment
-  where
-    innerComment = fix \_ -> do
-      (manyTill anyChar (string "-->") *> pure unit)
-      <|> innerComment
+comment = do
+  string "<!--"
+  manyTill anyChar $ string "-->"
+  pure unit
 
 skipSpace :: Parser Unit
 skipSpace = fix \_ ->
-  (comment *> skipSpace')
-  <|> (many1 ws *> skipSpace')
+  (comment *> skipSpace)
+  <|> (many1 ws *> skipSpace)
   <|> pure unit
   where
-    ws = satisfy\c ->
+    ws = satisfy \c ->
       c == '\n' ||
       c == '\r' ||
       c == '\t' ||
       c == ' '
-
-skipSpace' :: Parser Unit
-skipSpace' = fix \_ ->
-  skipSpace
 
 lexeme :: forall p. Parser p -> Parser p
 lexeme p = p <* skipSpace
 
 validNameString :: Parser String
 validNameString =
-  trim <<< flattenChars
-  <$> (many1 $ noneOf ['=', ' ', '<', '>', '/', '"'])
+  flattenChars
+  <$> many1 (noneOf ['=', ' ', '<', '>', '/', '"'])
 
 attribute :: Parser Attribute
-attribute = lexeme $ do
+attribute = lexeme do
   name <- validNameString
-  value <- getValue <|> pure ""
+  value <- (flattenChars <$> getValue) <|> pure ""
   pure $ Attribute (Name name) (Value value)
   where
-    getValue = do
-      void $ string "=\""
-      value <- trim <<< flattenChars <$> (many $ noneOf ['"'])
-      void $ char '"'
-      pure $ value
+    getValue =
+      string "=\"" *> manyTill (noneOf ['"']) (char '"')
 
 tagOpenOrSingleOrClose :: Parser Tag
 tagOpenOrSingleOrClose = lexeme $
-  char '<'
-  *> (closeTag <|> tagOpenOrSingle)
+  char '<' *> (closeTag <|> tagOpenOrSingle)
 
 closeTag :: Parser Tag
-closeTag = lexeme $ do
-  void $ char '/'
+closeTag = lexeme do
+  char '/'
   name <- validNameString
-  void $ char '>'
+  char '>'
   pure $ TagClose (TagName name)
 
 tagOpenOrSingle :: Parser Tag
-tagOpenOrSingle = lexeme $ do
-  tagName <- TagName <$> validNameString <* skipSpace
+tagOpenOrSingle = lexeme do
+  tagName <- lexeme $ TagName <$> validNameString
   attrs <- many attribute <|> pure mempty
   let spec' = spec tagName attrs
-  (closeTagOpen spec')
-    <|> (closeTagSingle spec')
+  closeTagOpen spec'
+    <|> closeTagSingle spec'
     <|> fail "no closure in sight for tag opening"
   where
     spec tagName attrs constructor =
       constructor tagName attrs
     closeTagOpen f =
-      char '>' *> (pure $ f TagOpen)
+      char '>' *> pure (f TagOpen)
     closeTagSingle f =
-      string "/>" *> (pure $ f TagSingle)
+      string "/>" *> pure (f TagSingle)
 
 tnode :: Parser Tag
-tnode = lexeme $ do
-  text <- flattenChars <$> (many1 $ satisfy ((/=) '<'))
-  pure $ TNode (trim text)
+tnode = lexeme do
+  TNode <<< flattenChars <$> many1 (satisfy ((/=) '<'))
 
 tag :: Parser Tag
 tag = lexeme do
-  (tagOpenOrSingleOrClose <|> tnode)
+  tagOpenOrSingleOrClose <|> tnode
 
 tags :: Parser (List Tag)
 tags = do
