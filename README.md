@@ -1,4 +1,4 @@
-# purescript-lenient-html-parser
+# purescript-lenient-html-parser [![Build Status](https://travis-ci.org/justinwoo/purescript-lenient-html-parser.svg?branch=master)](https://travis-ci.org/justinwoo/purescript-lenient-html-parser)
 
 A reaaaaaally lenient HTML parser for purescript inspired by ndmitchell's [TagSoup](https://github.com/ndmitchell/tagsoup/).
 
