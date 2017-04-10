@@ -55,8 +55,8 @@ flattenChars = trim <<< fromCharArray <<< fromFoldable
 
 comment :: Parser Unit
 comment = do
-  string "<!--"
-  manyTill anyChar $ string "-->"
+  _ <- string "<!--"
+  _ <- manyTill anyChar $ string "-->"
   pure unit
 
 skipSpace :: Parser Unit
@@ -94,9 +94,9 @@ tagOpenOrSingleOrClose = lexeme $
 
 closeTag :: Parser Tag
 closeTag = lexeme do
-  char '/'
+  _ <- char '/'
   name <- validNameString
-  char '>'
+  _ <- char '>'
   pure $ TagClose (TagName name)
 
 tagOpenOrSingle :: Parser Tag

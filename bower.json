@@ -12,15 +12,15 @@
     "url": "git://github.com/justinwoo/purescript-lenient-html-parser.git"
   },
   "dependencies": {
-    "purescript-prelude": "^2.2.0",
-    "purescript-console": "^2.0.0",
-    "purescript-string-parsers": "^2.0.0",
-    "purescript-generics-rep": "^4.1.0"
+    "purescript-prelude": "^3.0.0",
+    "purescript-console": "^3.0.0",
+    "purescript-string-parsers": "^3.0.0",
+    "purescript-generics-rep": "^5.0.0"
   },
   "devDependencies": {
-    "purescript-psci-support": "^2.0.0",
-    "purescript-aff": "^2.0.2",
-    "purescript-test-unit": "^10.1.0",
-    "purescript-node-fs-aff": "^3.0.0"
+    "purescript-psci-support": "^3.0.0",
+    "purescript-aff": "^3.0.0",
+    "purescript-test-unit": "^11.0.0",
+    "purescript-node-fs-aff": "^4.0.0"
   }
 }

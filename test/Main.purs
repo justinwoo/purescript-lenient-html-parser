@@ -62,7 +62,7 @@ expectTags str exp =
     Left e -> do
       failure (show e)
 
-testParser :: forall e a. (Show a, Eq a) =>
+testParser :: forall e a. Show a => Eq a =>
   Parser a ->
   String ->
   a ->
