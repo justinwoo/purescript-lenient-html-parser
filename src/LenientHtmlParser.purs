@@ -45,6 +45,7 @@ data Tag
   | TagSingle TagName Attributes
   | TagClose TagName
   | TNode String
+  | TScript Attributes String
 derive instance eqTag :: Eq Tag
 derive instance genericTag :: Generic Tag
 derive instance genericRepTag :: Rep.Generic Tag _
@@ -119,9 +120,16 @@ tnode :: Parser Tag
 tnode = lexeme do
   TNode <<< flattenChars <$> many1 (satisfy ((/=) '<'))
 
+scriptTag :: Parser Tag
+scriptTag = lexeme do
+  _ <- lexeme $ string "<script"
+  attrs <- manyTill attribute (char '>')
+  content <- manyTill anyChar $ string "</script>"
+  pure $ TScript attrs (flattenChars content)
+
 tag :: Parser Tag
 tag = lexeme do
-  tagOpenOrSingleOrClose <|> tnode
+  scriptTag <|> tagOpenOrSingleOrClose <|> tnode
 
 tags :: Parser (List Tag)
 tags = do

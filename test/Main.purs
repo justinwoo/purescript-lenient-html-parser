@@ -8,7 +8,8 @@ import Control.Monad.Eff.Console (CONSOLE)
 import Data.Either (Either(Right, Left), either)
 import Data.List (List(..), (:))
 import Data.Monoid (mempty)
-import LenientHtmlParser (parse, tnode, tag, attribute, TagName(TagName), Tag(TagOpen, TNode, TagClose, TagSingle), Name(Name), Value(Value), Attribute(Attribute), parseTags)
+import Global.Unsafe (unsafeStringify)
+import LenientHtmlParser (Attribute(Attribute), Name(Name), Tag(..), TagName(TagName), Value(Value), attribute, parse, parseTags, tag, tags, tnode)
 import Node.Encoding (Encoding(..))
 import Node.FS (FS)
 import Node.FS.Aff (readTextFile)
@@ -16,7 +17,7 @@ import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (assert)
 import Test.Unit.Console (TESTOUTPUT)
 import Test.Unit.Main (runTest)
-import Text.Parsing.StringParser (Parser)
+import Text.Parsing.StringParser (Parser, unParser)
 
 testHtml :: String
 testHtml = """
@@ -99,10 +100,16 @@ main = runTest do
       testParser tag "<crap> " $ TagOpen (TagName "crap") mempty
     test "tag open with attr" $
       testParser tag "<crap a=\"sdf\"> " $ TagOpen (TagName "crap") (pure (Attribute (Name "a") (Value "sdf")))
+    test "tag script" $
+      testParser tag """<script></script>""" $
+        TScript mempty ""
+    test "tag script with attribute" $
+      testParser tag """<script src="test"></script>""" $
+        TScript (pure (Attribute (Name "src") (Value "test"))) ""
     test "parseTags" do
       expectTags testHtml expectedTestTags
     test "multiple comments" do
       expectTags testMultiCommentHtml expectedMultiCommentTestTags
     test "test fixtures/crap.html" do
       a <- readTextFile UTF8 "fixtures/crap.html"
-      either (failure <<< show) (const success) (parseTags a)
+      either (failure <<< unsafeStringify) (const success) $ unParser tags {str: a, pos: 0}
