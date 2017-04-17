@@ -7,12 +7,12 @@ import Data.Array (fromFoldable)
 import Data.Either (Either)
 import Data.Generic (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.List (List)
+import Data.List (List, elem)
 import Data.Monoid (mempty)
 import Data.String (trim, fromCharArray)
 import Text.Parsing.StringParser (Parser, ParseError, runParser, fail)
 import Text.Parsing.StringParser.Combinators (fix, many, many1, manyTill)
-import Text.Parsing.StringParser.String (anyChar, char, noneOf, satisfy, string)
+import Text.Parsing.StringParser.String (anyChar, char, eof, noneOf, satisfy, string)
 
 newtype TagName = TagName String
 derive instance eqTagName :: Eq TagName
@@ -86,8 +86,21 @@ attribute = lexeme do
   value <- (flattenChars <$> getValue) <|> pure ""
   pure $ Attribute (Name name) (Value value)
   where
-    getValue =
-      string "=\"" *> manyTill (noneOf ['"']) (char '"')
+    termini = ['"', '>', ' ']
+    getValue = do
+      _ <- char '='
+      content <- withQuotes <|> withoutQuotes
+      -- _ <- void (char '"') <|> pure unit
+      -- content <- many (satisfy (not flip elem termini))
+      -- _ <- void (char '"') <|> void (char ' ') <|> eof <|> pure unit
+      pure content
+    withQuotes = do
+      _ <- char '"'
+      manyTill anyChar $ void (char '"') <|> eof
+    withoutQuotes = do
+      content <- many $ satisfy (not flip elem ['>', ' '])
+      _ <- void (char ' ') <|> eof <|> pure unit
+      pure content
 
 tagOpenOrSingleOrClose :: Parser Tag
 tagOpenOrSingleOrClose = lexeme $
@@ -132,7 +145,11 @@ scriptTag = lexeme do
       (do
         _ <- string "</script>"
         pure $ flattenChars (acc <> chars)
-      ) <|> inner chars
+      ) <|> (
+        do
+        _ <- char '<'
+        inner chars
+      )
 
 tag :: Parser Tag
 tag = lexeme do

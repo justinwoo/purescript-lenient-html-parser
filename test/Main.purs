@@ -92,6 +92,8 @@ main = runTest do
       testParser attribute "abc=\"1223\"" $ Attribute (Name "abc") (Value "1223")
     test "empty attribute" $
       testParser attribute "abc=\"\"" $ Attribute (Name "abc") (Value "")
+    test "attribute with no quotes" $
+      testParser attribute "for=autoplay-toggle-id" $ Attribute (Name "for") (Value "autoplay-toggle-id")
     test "tag close" $
       testParser tag "</crap>" $ TagClose (TagName "crap")
     test "tag single" $
@@ -115,4 +117,7 @@ main = runTest do
       expectTags testMultiCommentHtml expectedMultiCommentTestTags
     test "test fixtures/crap.html" do
       a <- readTextFile UTF8 "fixtures/crap.html"
+      either (failure <<< unsafeStringify) (const success) $ unParser tags {str: a, pos: 0}
+    test "test fixtures/megacrap.html" do
+      a <- readTextFile UTF8 "fixtures/megacrap.html"
       either (failure <<< unsafeStringify) (const success) $ unParser tags {str: a, pos: 0}
