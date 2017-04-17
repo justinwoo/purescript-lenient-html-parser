@@ -103,6 +103,9 @@ main = runTest do
     test "tag script" $
       testParser tag """<script></script>""" $
         TScript mempty ""
+    test "tag script with content" $
+      testParser tag """<script>相思相愛</script>""" $
+        TScript mempty "相思相愛"
     test "tag script with attribute" $
       testParser tag """<script src="test"></script>""" $
         TScript (pure (Attribute (Name "src") (Value "test"))) ""

@@ -124,8 +124,15 @@ scriptTag :: Parser Tag
 scriptTag = lexeme do
   _ <- lexeme $ string "<script"
   attrs <- manyTill attribute (char '>')
-  content <- manyTill anyChar $ string "</script>"
-  pure $ TScript attrs (flattenChars content)
+  content <- inner mempty
+  pure $ TScript attrs content
+  where
+    inner acc = fix \_ -> do
+      chars <- many (satisfy ((/=) '<'))
+      (do
+        _ <- string "</script>"
+        pure $ flattenChars (acc <> chars)
+      ) <|> inner chars
 
 tag :: Parser Tag
 tag = lexeme do
