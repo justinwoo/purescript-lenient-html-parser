@@ -116,8 +116,8 @@ main = runTest do
     test "multiple comments" do
       expectTags testMultiCommentHtml expectedMultiCommentTestTags
     test "test fixtures/crap.html" do
-      a <- readTextFile UTF8 "fixtures/crap.html"
+      a <- readTextFile UTF8 "test/fixtures/crap.html"
       either (failure <<< unsafeStringify) (const success) $ unParser tags {str: a, pos: 0}
     test "test fixtures/megacrap.html" do
-      a <- readTextFile UTF8 "fixtures/megacrap.html"
+      a <- readTextFile UTF8 "test/fixtures/megacrap.html"
       either (failure <<< unsafeStringify) (const success) $ unParser tags {str: a, pos: 0}
