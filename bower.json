@@ -14,7 +14,7 @@
   "dependencies": {
     "purescript-prelude": "^3.0.0",
     "purescript-console": "^3.0.0",
-    "purescript-string-parsers": "^3.0.0",
+    "purescript-string-parsers": "^3.0.1",
     "purescript-generics-rep": "^5.0.0"
   },
   "devDependencies": {
