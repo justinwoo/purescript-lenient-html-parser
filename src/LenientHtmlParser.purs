@@ -60,9 +60,16 @@ comment = do
   _ <- manyTill anyChar $ string "-->"
   pure unit
 
+doctype :: Parser Unit
+doctype = do
+  _ <- string "<!DOCTYPE" <|> string "<!doctype"
+  _ <- manyTill anyChar $ string ">"
+  pure unit
+
 skipSpace :: Parser Unit
 skipSpace = fix \_ ->
   (comment *> skipSpace)
+  <|> (doctype *> skipSpace)
   <|> (many1 ws *> skipSpace)
   <|> pure unit
   where

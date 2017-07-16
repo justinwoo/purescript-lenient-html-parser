@@ -37,12 +37,12 @@ testHtml = """
 
 expectedTestTags :: List Tag
 expectedTestTags =
-  ((TagOpen (TagName "!DOCTYPE") ((Attribute (Name "html") (Value "")) : Nil)) : (TagOpen (TagName "table") Nil) : (TagOpen (TagName "tr") Nil) : (TagOpen (TagName "td") Nil) : (TNode "Trash") : (TagClose (TagName "td")) : (TagOpen (TagName "td") ((Attribute (Name "class") (Value "target")) : Nil)) : (TagOpen (TagName "a") ((Attribute (Name "href") (Value "http://mylink")) : Nil)) : (TNode "[悪因悪果] 今季のゴミ - 01 [140p].avi") : (TagClose (TagName "a")) : (TagClose (TagName "td")) : (TagClose (TagName "tr")) : (TagClose (TagName "table")) : Nil)
+  ((TagOpen (TagName "table") Nil) : (TagOpen (TagName "tr") Nil) : (TagOpen (TagName "td") Nil) : (TNode "Trash") : (TagClose (TagName "td")) : (TagOpen (TagName "td") ((Attribute (Name "class") (Value "target")) : Nil)) : (TagOpen (TagName "a") ((Attribute (Name "href") (Value "http://mylink")) : Nil)) : (TNode "[悪因悪果] 今季のゴミ - 01 [140p].avi") : (TagClose (TagName "a")) : (TagClose (TagName "td")) : (TagClose (TagName "tr")) : (TagClose (TagName "table")) : Nil)
 
 
 testMultiCommentHtml :: String
 testMultiCommentHtml = """
-<!DOCTYPE html>
+<!DOCTYPE html "-//W3C//DTD XHTML 1.0 Transitional//EN">
 <!-- whatever -->
 <!-- whatever -->
 <!-- whatever -->
@@ -53,7 +53,7 @@ testMultiCommentHtml = """
 
 expectedMultiCommentTestTags :: List Tag
 expectedMultiCommentTestTags =
-  ((TagOpen (TagName "!DOCTYPE") ((Attribute (Name "html") (Value "")) : Nil)) : (TagOpen (TagName "div") Nil) : (TagClose (TagName "div")) : Nil)
+  ((TagOpen (TagName "div") Nil) : (TagClose (TagName "div")) : Nil)
 
 expectTags :: forall e. String -> List Tag -> Aff e Unit
 expectTags str exp =
@@ -102,6 +102,10 @@ main = runTest do
       testParser tag "<crap> " $ TagOpen (TagName "crap") mempty
     test "tag open with attr" $
       testParser tag "<crap a=\"sdf\"> " $ TagOpen (TagName "crap") (pure (Attribute (Name "a") (Value "sdf")))
+    test "tag DOCTYPE" $
+      testParser tags """
+        <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+      """ $ mempty
     test "tag script" $
       testParser tag """<script></script>""" $
         TScript mempty ""
