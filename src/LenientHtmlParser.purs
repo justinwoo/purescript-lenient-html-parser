@@ -1,11 +1,11 @@
 module LenientHtmlParser where
 
 import Prelude
-import Data.Generic.Rep as Rep
+
 import Control.Alt ((<|>))
 import Data.Array (fromFoldable)
 import Data.Either (Either)
-import Data.Generic (class Generic)
+import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.List (List, elem)
 import Data.Monoid (mempty)
@@ -16,28 +16,24 @@ import Text.Parsing.StringParser.String (anyChar, char, eof, noneOf, satisfy, st
 
 newtype TagName = TagName String
 derive instance eqTagName :: Eq TagName
-derive instance genericTagName :: Generic TagName
-derive instance genericRepTagName :: Rep.Generic TagName _
+derive instance genericRepTagName :: Generic TagName _
 instance showTagName :: Show TagName where show = genericShow
 
 type Attributes = List Attribute
 
 newtype Name = Name String
 derive instance eqName :: Eq Name
-derive instance genericName :: Generic Name
-derive instance genericRepName :: Rep.Generic Name _
+derive instance genericRepName :: Generic Name _
 instance showName :: Show Name where show = genericShow
 
 newtype Value = Value String
 derive instance eqValue :: Eq Value
-derive instance genericValue :: Generic Value
-derive instance genericRepValue :: Rep.Generic Value _
+derive instance genericRepValue :: Generic Value _
 instance showValue :: Show Value where show = genericShow
 
 data Attribute = Attribute Name Value
 derive instance eqAttribute :: Eq Attribute
-derive instance genericAttribute :: Generic Attribute
-derive instance genericRepAttribute :: Rep.Generic Attribute _
+derive instance genericRepAttribute :: Generic Attribute _
 instance showAttribute :: Show Attribute where show = genericShow
 
 data Tag
@@ -47,8 +43,7 @@ data Tag
   | TNode String
   | TScript Attributes String
 derive instance eqTag :: Eq Tag
-derive instance genericTag :: Generic Tag
-derive instance genericRepTag :: Rep.Generic Tag _
+derive instance genericRepTag :: Generic Tag _
 instance showTag :: Show Tag where show = genericShow
 
 flattenChars :: List Char -> String
@@ -97,9 +92,6 @@ attribute = lexeme do
     getValue = do
       _ <- char '='
       content <- withQuotes <|> withoutQuotes
-      -- _ <- void (char '"') <|> pure unit
-      -- content <- many (satisfy (not flip elem termini))
-      -- _ <- void (char '"') <|> void (char ' ') <|> eof <|> pure unit
       pure content
     withQuotes = do
       _ <- char '"'
