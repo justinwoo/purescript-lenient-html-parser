@@ -9,10 +9,10 @@ import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.List (List, elem)
 import Data.Monoid (mempty)
-import Data.String (trim, fromCharArray)
+import Data.String (dropRight, fromCharArray, trim)
 import Text.Parsing.StringParser (Parser, ParseError, runParser, fail)
 import Text.Parsing.StringParser.Combinators (fix, many, many1, manyTill)
-import Text.Parsing.StringParser.String (anyChar, char, eof, noneOf, satisfy, string)
+import Text.Parsing.StringParser.String (anyChar, char, eof, noneOf, regex, satisfy, string)
 
 newtype TagName = TagName String
 derive instance eqTagName :: Eq TagName
@@ -58,7 +58,8 @@ comment = do
 doctype :: Parser Unit
 doctype = do
   _ <- string "<!DOCTYPE" <|> string "<!doctype"
-  _ <- manyTill anyChar $ string ">"
+  _ <- regex "[^>]*"
+  _ <- char '>'
   pure unit
 
 skipSpace :: Parser Unit
@@ -130,14 +131,17 @@ tagOpenOrSingle = lexeme do
 
 tnode :: Parser Tag
 tnode = lexeme do
-  TNode <<< flattenChars <$> many1 (satisfy ((/=) '<'))
+  TNode <$> regex "[^<]+" <|> slow
+  where
+    slow = fix \_ ->
+      TNode <<< flattenChars <$> many1 (satisfy ((/=) '<'))
 
 scriptTag :: Parser Tag
 scriptTag = lexeme do
   _ <- lexeme $ string "<script"
   attrs <- manyTill attribute (char '>')
-  content <- manyTill anyChar (string "</script>")
-  pure $ TScript attrs $ flattenChars content
+  content <- dropRight 9 <$> regex "[\\s\\S]*</script>"
+  pure $ TScript attrs content
 
 tag :: Parser Tag
 tag = lexeme do

@@ -1,0 +1,16 @@
+{
+  "name": "ytcasts",
+  "set": "tangsuyuk",
+  "source": "https://github.com/justinwoo/package-sets.git",
+  "depends": [
+    "debug",
+    "prelude",
+    "console",
+    "string-parsers",
+    "generics-rep",
+    "psci-support",
+    "aff",
+    "test-unit",
+    "node-fs-aff"
+  ]
+}
