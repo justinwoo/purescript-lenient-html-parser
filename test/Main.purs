@@ -2,22 +2,17 @@ module Test.Main where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
 import Data.Either (Either(Right, Left), either)
 import Data.List (List(..), (:))
-import Data.Monoid (mempty)
+import Effect (Effect)
+import Effect.Aff (Aff)
 import Global.Unsafe (unsafeStringify)
 import LenientHtmlParser (Attribute(Attribute), Name(Name), Tag(..), TagName(TagName), Value(Value), attribute, parse, parseTags, tag, tags, tnode)
 import Node.Encoding (Encoding(..))
-import Node.FS (FS)
 import Node.FS.Aff (readTextFile)
 import Test.Unit (failure, success, suite, test)
 import Test.Unit.Assert (assert)
 import Test.Unit.Assert as Assert
-import Test.Unit.Console (TESTOUTPUT)
 import Test.Unit.Main (runTest)
 import Text.Parsing.StringParser (Parser, unParser)
 
@@ -57,7 +52,7 @@ expectedMultiCommentTestTags :: List Tag
 expectedMultiCommentTestTags =
   ((TagOpen (TagName "div") Nil) : (TagClose (TagName "div")) : Nil)
 
-expectTags :: forall e. String -> List Tag -> Aff e Unit
+expectTags :: String -> List Tag -> Aff Unit
 expectTags str exp =
   case parseTags str of
     Right x -> do
@@ -65,11 +60,11 @@ expectTags str exp =
     Left e -> do
       failure (show e)
 
-testParser :: forall e a. Show a => Eq a =>
+testParser :: forall a. Show a => Eq a =>
   Parser a ->
   String ->
   a ->
-  Aff (console :: CONSOLE | e) Unit
+  Aff Unit
 testParser p s expected =
   case parse p s of
     Right x -> do
@@ -77,15 +72,7 @@ testParser p s expected =
     Left e ->
       failure $ "parsing failed: " <> show e
 
-main :: forall e.
-  Eff
-    ( "console" :: CONSOLE
-    , "testOutput" :: TESTOUTPUT
-    , "avar" :: AVAR
-    , "fs" :: FS
-    | e
-    )
-    Unit
+main :: Effect Unit
 main = runTest do
   suite "LenientHtmlParser" do
     test "tnode that ends with bracket" $
