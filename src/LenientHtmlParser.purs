@@ -5,11 +5,12 @@ import Prelude
 import Control.Alt ((<|>))
 import Data.Array (fromFoldable)
 import Data.Either (Either)
+import Data.Foldable (class Foldable)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.List (List, elem)
-import Data.Monoid (mempty)
-import Data.String (dropRight, fromCharArray, trim)
+import Data.String (trim)
+import Data.String.CodeUnits (dropRight, fromCharArray)
 import Text.Parsing.StringParser (Parser, ParseError, runParser, fail)
 import Text.Parsing.StringParser.Combinators (fix, many, many1, manyTill)
 import Text.Parsing.StringParser.String (anyChar, char, eof, noneOf, regex, satisfy, string)
@@ -46,7 +47,7 @@ derive instance eqTag :: Eq Tag
 derive instance genericRepTag :: Generic Tag _
 instance showTag :: Show Tag where show = genericShow
 
-flattenChars :: List Char -> String
+flattenChars :: forall f. Foldable f => f Char -> String
 flattenChars = trim <<< fromCharArray <<< fromFoldable
 
 comment :: Parser Unit
