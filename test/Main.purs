@@ -2,16 +2,24 @@ module Test.Main where
 
 import Prelude
 
-import Data.Either (Either(Right, Left), either)
+import Control.Monad.Rec.Class (Step(..), tailRec)
+import Data.Array (find)
+import Data.Array as Array
+import Data.Either (Either(Right, Left))
+import Data.Foldable (traverse_)
 import Data.List (List(..), (:))
+import Data.List as List
+import Data.Maybe (Maybe(..))
+import Data.String as S
+import Data.String.CodeUnits as SCU
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff (Aff)
-import Global.Unsafe (unsafeStringify)
+import Effect.Class.Console (log, logShow)
 import LenientHtmlParser (Attribute(Attribute), Name(Name), Tag(..), TagName(TagName), Value(Value), attribute, parse, parseTags, tag, tags, tnode)
 import Node.Encoding (Encoding(..))
 import Node.FS.Aff (readTextFile)
 import Test.Unit (failure, success, suite, test)
-import Test.Unit.Assert (assert)
 import Test.Unit.Assert as Assert
 import Test.Unit.Main (runTest)
 import Text.Parsing.StringParser (Parser, unParser)
@@ -68,7 +76,7 @@ testParser :: forall a. Show a => Eq a =>
 testParser p s expected =
   case parse p s of
     Right x -> do
-      assert "parsing worked:" $ x == expected
+      Assert.shouldEqual x expected
     Left e ->
       failure $ "parsing failed: " <> show e
 
@@ -106,13 +114,58 @@ main = runTest do
     test "tag script with attribute" $
       testParser tag """<script src="test"></script>""" $
         TScript (pure (Attribute (Name "src") (Value "test"))) ""
+    test "tag script improper" $
+      testParser tag """<script src="test" >""" $
+        TScript (pure (Attribute (Name "src") (Value "test"))) ""
     test "parseTags" do
       expectTags testHtml expectedTestTags
     test "multiple comments" do
       expectTags testMultiCommentHtml expectedMultiCommentTestTags
+
     test "test fixtures/crap.html" do
       a <- readTextFile UTF8 "test/fixtures/crap.html"
-      either (failure <<< unsafeStringify) (const success) $ unParser tags {str: a, pos: 0}
+      case unParser tags {str: a, pos: 0} of
+        Left e ->
+          failure $ "Failed: " <> show e
+        Right tags -> do
+          -- traverse_ logShow tags.result
+          success
+
+    test "test fixtures/megacrap-formatted.html" do
+      a <- readTextFile UTF8 "test/fixtures/megacrap-formatted.html"
+      case unParser tags {str: a, pos: 0} of
+        Left e -> do
+          failure $ "Failed: " <> show e <> " from around " <> (SCU.take 40 $ SCU.drop (e.pos - 40) a)
+        Right tags -> do
+          -- traverse_ logShow tags.result
+          success
+
     test "test fixtures/megacrap.html" do
       a <- readTextFile UTF8 "test/fixtures/megacrap.html"
-      either (failure <<< unsafeStringify) (const success) $ unParser tags {str: a, pos: 0}
+      let tags = parseTags a
+      case getYTLinks <$> tags of
+        Left e ->
+          failure $ "Failed: " <> show e
+        Right (Tuple tags' List.Nil) -> do
+          traverse_ logShow tags'
+          failure "Unable to find items"
+        Right (Tuple _tags' xs) -> do
+          traverse_ logShow xs
+          success
+
+getYTLinks :: List Tag -> Tuple (List Tag) (List String)
+getYTLinks tags =
+  Tuple tags $ tailRec getLinks (Tuple mempty tags)
+  where
+    getLinks (Tuple acc (TagOpen (TagName "a") attrs : TNode tnode : TagClose (TagName "a") : xs))
+      | Just true <- S.contains (S.Pattern "yt-uix-tile-link") <$> (getAttr "class" attrs)
+      , title <- S.trim tnode
+      , Just (Just href) <- Array.head <<< S.split (S.Pattern "&") <$> getAttr "href" attrs
+      , link <- "https://www.youtube.com" <> href = Loop (Tuple (List.Cons (title <> ": " <> link) acc) xs)
+      | otherwise = Loop (Tuple acc xs)
+    getLinks (Tuple acc (_ : xs)) = Loop (Tuple acc xs)
+    getLinks (Tuple acc _) = Done acc
+    getAttr match xs = getValue <$> find matchName xs
+      where
+        matchName (Attribute (Name name) _) = match == name
+        getValue (Attribute _ (Value x)) = S.trim $ x

@@ -14,7 +14,7 @@
   "dependencies": {
     "purescript-prelude": "^4.0.0",
     "purescript-console": "^4.1.0",
-    "purescript-string-parsers": "^4.0.0",
+    "purescript-string-parsers": "justinwoo/purescript-string-parsers#no-code-points",
     "purescript-generics-rep": "^6.0.0"
   },
   "devDependencies": {
