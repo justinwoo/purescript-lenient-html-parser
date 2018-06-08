@@ -3,39 +3,38 @@ module LenientHtmlParser where
 import Prelude
 
 import Control.Alt ((<|>))
-import Data.Array (fromFoldable)
-import Data.Either (Either)
-import Data.Foldable (class Foldable)
+import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.List (List, elem)
-import Data.String (trim)
-import Data.String.CodeUnits (dropRight, fromCharArray)
-import Text.Parsing.StringParser (Parser, ParseError, runParser, fail)
+import Data.List (List)
+import Data.Maybe (Maybe(..))
+import Data.String.CodeUnits as SCU
+import Data.String.Pattern (Pattern(..))
+import Text.Parsing.StringParser (ParseError(..), Parser(..), fail, runParser)
 import Text.Parsing.StringParser.Combinators (fix, many, many1, manyTill)
-import Text.Parsing.StringParser.String (anyChar, char, eof, noneOf, regex, satisfy, string)
+import Text.Parsing.StringParser.String (anyChar, char, regex, satisfy)
 
 newtype TagName = TagName String
 derive instance eqTagName :: Eq TagName
 derive instance genericRepTagName :: Generic TagName _
-instance showTagName :: Show TagName where show = genericShow
-
-type Attributes = List Attribute
+derive newtype instance showTagName :: Show TagName
 
 newtype Name = Name String
 derive instance eqName :: Eq Name
 derive instance genericRepName :: Generic Name _
-instance showName :: Show Name where show = genericShow
+derive newtype instance showName :: Show Name
 
 newtype Value = Value String
 derive instance eqValue :: Eq Value
 derive instance genericRepValue :: Generic Value _
-instance showValue :: Show Value where show = genericShow
+derive newtype instance showValue :: Show Value
 
 data Attribute = Attribute Name Value
 derive instance eqAttribute :: Eq Attribute
 derive instance genericRepAttribute :: Generic Attribute _
 instance showAttribute :: Show Attribute where show = genericShow
+
+type Attributes = List Attribute
 
 data Tag
   = TagOpen TagName Attributes
@@ -47,20 +46,16 @@ derive instance eqTag :: Eq Tag
 derive instance genericRepTag :: Generic Tag _
 instance showTag :: Show Tag where show = genericShow
 
-flattenChars :: forall f. Foldable f => f Char -> String
-flattenChars = trim <<< fromCharArray <<< fromFoldable
-
 comment :: Parser Unit
 comment = do
-  _ <- string "<!--"
-  _ <- manyTill anyChar $ string "-->"
+  _ <- regex "<!--"
+  _ <- manyTill anyChar $ regex "-->"
   pure unit
 
 doctype :: Parser Unit
 doctype = do
-  _ <- string "<!DOCTYPE" <|> string "<!doctype"
-  _ <- regex "[^>]*"
-  _ <- char '>'
+  _ <- regex "<!DOCTYPE" <|> regex "<!doctype"
+  _ <- takeStringTill { end: ">", allowEof: true }
   pure unit
 
 skipSpace :: Parser Unit
@@ -81,26 +76,23 @@ lexeme p = p <* skipSpace
 
 validNameString :: Parser String
 validNameString =
-  flattenChars
-  <$> many1 (noneOf ['=', ' ', '<', '>', '/', '"'])
+  regex "[^= <>/\\\"]+"
 
 attribute :: Parser Attribute
 attribute = lexeme do
   name <- validNameString
-  value <- (flattenChars <$> getValue) <|> pure ""
+  value <- getValue <|> pure ""
   pure $ Attribute (Name name) (Value value)
   where
-    termini = ['"', '>', ' ']
     getValue = do
       _ <- char '='
       content <- withQuotes <|> withoutQuotes
       pure content
     withQuotes = do
       _ <- char '"'
-      manyTill anyChar $ void (char '"') <|> eof
+      takeStringTill { allowEof: true, end: "\"" }
     withoutQuotes = do
-      content <- many $ satisfy (not flip elem ['>', ' '])
-      _ <- void (char ' ') <|> eof <|> pure unit
+      content <- regex "[^> ]+"
       pure content
 
 tagOpenOrSingleOrClose :: Parser Tag
@@ -128,21 +120,51 @@ tagOpenOrSingle = lexeme do
     closeTagOpen f =
       char '>' *> pure (f TagOpen)
     closeTagSingle f =
-      string "/>" *> pure (f TagSingle)
+      regex "/>" *> pure (f TagSingle)
 
 tnode :: Parser Tag
 tnode = lexeme do
-  TNode <$> regex "[^<]+" <|> slow
-  where
-    slow = fix \_ ->
-      TNode <<< flattenChars <$> many1 (satisfy ((/=) '<'))
+  TNode <$> regex "[^<]+"
 
 scriptTag :: Parser Tag
 scriptTag = lexeme do
-  _ <- lexeme $ string "<script"
-  attrs <- manyTill attribute (char '>')
-  content <- dropRight 9 <$> regex "[\\s\\S]*</script>"
+  _ <- lexeme $ regex "<script"
+  attrs <- many attribute
+  content <- invalidSelfClosing <|> normal
   pure $ TScript attrs content
+  where
+    invalidSelfClosing = do
+      _ <- (regex "/>")
+      pure ""
+    normal = do
+      _ <- regex ">"
+      content <- takeStringTill { end: "</script>", allowEof: false } <|> pure ""
+      pure content
+
+takeStringTill ::
+  { allowEof :: Boolean
+  , end :: String
+  }
+  -> Parser String
+takeStringTill { end, allowEof } = Parser \{str, pos} ->
+  let
+    len = SCU.length end
+    idx = SCU.indexOf' (Pattern end) pos str
+  in
+    case idx of
+      Nothing -> if allowEof
+        then Right
+          { result: SCU.drop pos str
+          , suffix: { str, pos: SCU.length str }
+          }
+        else Left
+          { pos
+          , error: ParseError $ "Could not close with found character: " <> end
+          }
+      Just i -> Right
+        { result: SCU.take (i - pos) (SCU.drop pos str)
+        , suffix: { str, pos: i + len }
+        }
 
 tag :: Parser Tag
 tag = lexeme do
