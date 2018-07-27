@@ -11,8 +11,8 @@ import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits as SCU
 import Data.String.Pattern (Pattern(..))
 import Text.Parsing.StringParser (ParseError(..), Parser(..), fail, runParser)
+import Text.Parsing.StringParser.CodeUnits as Parser
 import Text.Parsing.StringParser.Combinators (fix, many, many1, manyTill)
-import Text.Parsing.StringParser.String (anyChar, char, regex, satisfy)
 
 newtype TagName = TagName String
 derive instance eqTagName :: Eq TagName
@@ -48,13 +48,13 @@ instance showTag :: Show Tag where show = genericShow
 
 comment :: Parser Unit
 comment = do
-  _ <- regex "<!--"
-  _ <- manyTill anyChar $ regex "-->"
+  _ <- Parser.regex "<!--"
+  _ <- manyTill Parser.anyChar $ Parser.regex "-->"
   pure unit
 
 doctype :: Parser Unit
 doctype = do
-  _ <- regex "<!DOCTYPE" <|> regex "<!doctype"
+  _ <- Parser.regex "<!DOCTYPE" <|> Parser.regex "<!doctype"
   _ <- takeStringTill { end: ">", allowEof: true }
   pure unit
 
@@ -65,7 +65,7 @@ skipSpace = fix \_ ->
   <|> (many1 ws *> skipSpace)
   <|> pure unit
   where
-    ws = satisfy \c ->
+    ws = Parser.satisfy \c ->
       c == '\n' ||
       c == '\r' ||
       c == '\t' ||
@@ -76,7 +76,7 @@ lexeme p = p <* skipSpace
 
 validNameString :: Parser String
 validNameString =
-  regex "[^= <>/\\\"]+"
+  Parser.regex "[^= <>/\\\"]+"
 
 attribute :: Parser Attribute
 attribute = lexeme do
@@ -85,25 +85,25 @@ attribute = lexeme do
   pure $ Attribute (Name name) (Value value)
   where
     getValue = do
-      _ <- char '='
+      _ <- Parser.char '='
       content <- withQuotes <|> withoutQuotes
       pure content
     withQuotes = do
-      _ <- char '"'
+      _ <- Parser.char '"'
       takeStringTill { allowEof: true, end: "\"" }
     withoutQuotes = do
-      content <- regex "[^> ]+"
+      content <- Parser.regex "[^> ]+"
       pure content
 
 tagOpenOrSingleOrClose :: Parser Tag
 tagOpenOrSingleOrClose = lexeme $
-  char '<' *> (closeTag <|> tagOpenOrSingle)
+  Parser.char '<' *> (closeTag <|> tagOpenOrSingle)
 
 closeTag :: Parser Tag
 closeTag = lexeme do
-  _ <- char '/'
+  _ <- Parser.char '/'
   name <- validNameString
-  _ <- char '>'
+  _ <- Parser.char '>'
   pure $ TagClose (TagName name)
 
 tagOpenOrSingle :: Parser Tag
@@ -118,26 +118,26 @@ tagOpenOrSingle = lexeme do
     spec tagName attrs constructor =
       constructor tagName attrs
     closeTagOpen f =
-      char '>' *> pure (f TagOpen)
+      Parser.char '>' *> pure (f TagOpen)
     closeTagSingle f =
-      regex "/>" *> pure (f TagSingle)
+      Parser.regex "/>" *> pure (f TagSingle)
 
 tnode :: Parser Tag
 tnode = lexeme do
-  TNode <$> regex "[^<]+"
+  TNode <$> Parser.regex "[^<]+"
 
 scriptTag :: Parser Tag
 scriptTag = lexeme do
-  _ <- lexeme $ regex "<script"
+  _ <- lexeme $ Parser.regex "<script"
   attrs <- many attribute
   content <- invalidSelfClosing <|> normal
   pure $ TScript attrs content
   where
     invalidSelfClosing = do
-      _ <- (regex "/>")
+      _ <- (Parser.regex "/>")
       pure ""
     normal = do
-      _ <- regex ">"
+      _ <- Parser.regex ">"
       content <- takeStringTill { end: "</script>", allowEof: false } <|> pure ""
       pure content
 
